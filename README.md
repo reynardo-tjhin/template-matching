@@ -1,3 +1,6 @@
+# template-matching
+COMP3419: Graphics and Multimedia Lab 10
+
 # Description
 
 What motivated me was it took me 25+ minutes to get the SSD Map and the SSD Map I got was wrong.
