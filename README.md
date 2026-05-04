@@ -1,7 +1,6 @@
-# template-matching
-COMP3419: Graphics and Multimedia Lab 10
+# COMP3419: Graphics and Multimedia Lab 10 Template Matching
 
-# Description
+##  Description
 
 What motivated me was it took me 25+ minutes to get the SSD Map and the SSD Map I got was wrong.
 Hence, I wanted to code something that can improve the time so that I can receive the feedback faster.
@@ -22,6 +21,9 @@ Final image generated using 2 files (`COMP3419-W10-Lab-Template-Matching.py` and
 - nvcc, version: 10.1.243
 - number of threads required: 665 per block
 - number of blocks required:  946 per grid
+
+NVIDIA-SMI 560.28.03              Driver Version: 560.28.03      CUDA Version: 12.6
+NVIDIA Corporation GA107BM [GeForce RTX 3050 Ti Mobile]
 
 Operating System:
 - Ubuntu, Version: "20.04.5 LTS (Focal Fossa)"

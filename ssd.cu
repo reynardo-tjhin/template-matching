@@ -80,7 +80,7 @@ int main() {
     h_res = (double *) malloc(result_n * sizeof(double));
 
     // get template data from the file
-    FILE* fpointer = fopen("template", "r");
+    FILE* fpointer = fopen("output/template", "r");
     int number; int i = 0;
     while ( fscanf(fpointer, "%d", &number) == 1 ) { 
         h_temp_img[i] = number;
@@ -89,7 +89,7 @@ int main() {
     fclose(fpointer);
 
     // get input image data from the file
-    fpointer = fopen("input_image", "r");
+    fpointer = fopen("output/input_image", "r");
     i = 0;
     while ( fscanf(fpointer, "%d", &number) == 1 ) { 
         h_inpt_img[i] = number;
@@ -142,7 +142,7 @@ int main() {
     // cudasynchro
 
     // write result to file
-    fpointer = fopen("ssd_map", "w");
+    fpointer = fopen("output/ssd_map", "w");
     for (int i = 0; i < result_row; i++) {
         for (int j = 0; j < result_col; j++) {
             fprintf(fpointer, "%.1f ", h_res[i * result_col + j]);

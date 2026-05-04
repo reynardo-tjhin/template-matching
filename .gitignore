@@ -220,3 +220,20 @@ __marimo__/
 
 # ignore zip files
 *.zip
+
+
+# ignore output files from .py
+input_image
+ssd*
+template
+
+
+# ignore output folder
+output/
+
+# testing file
+test.py
+
+
+# tutorial codes
+tutorial/
