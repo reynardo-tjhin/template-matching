@@ -6,9 +6,9 @@ What motivated me was it took me 25+ minutes to get the SSD Map and the SSD Map 
 Hence, I wanted to code something that can improve the time so that I can receive the feedback faster.
 Recently, I learnt about CUDA and GPUs and would like to use them to make the code faster by using parallel programming.
 
-Final image generated using 2 files (`COMP3419-W10-Lab-Template-Matching.py` and `ssd.cu`)
+Final image generated using 2 files (`main.py` and `ssd.cu`)
 
-`COMP3419-W10-Lab-Template-Matching.py`: 
+`main.py`: 
 1. Breakdown the image into numbers (0 and 255)
 2. Create a file to write the image data into (`template` and `input_image`)
 3. Run the `ssd.cu` file to get the ssd_map
