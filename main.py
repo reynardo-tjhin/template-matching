@@ -1,6 +1,8 @@
 import subprocess
 import pathlib
 import logging
+import click
+import time
 import numpy as np
 
 from imageio.v3 import imread
@@ -11,39 +13,41 @@ from matplotlib import pyplot as plt
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
 
-def load_img(img_path: str, pilmode: str = 'L') -> np.ndarray:
+def postprocessing(img: np.ndarray) -> np.ndarray:
     """
-    Load an image based on the image path using `imread`.
-    Convert the image to grayscale (pilmode = 'L').
-    Apply preprocessing:
-    - values less than 128: 0
-    - values greater than 127: 255
-    
-    :param img_path: the path to the image
-    :param pilmode: the PIL mode ('L' for grayscale, 'RGB', 'RGBA')
+    Apply post-processing to the image.
+    Only runs this when pre-processing with simplify flag is turned on.
+
+    :param img: the image array
     """
-    # load input image and convert the image to grayscale
-    img = imread(img_path, pilmode=pilmode)
+    img[img <= 0] = 0
+    img[img >= 1] = 255
+    return img
+
+
+def preprocessing(img: np.ndarray, simplify: bool = True) -> np.ndarray:
+    """
+    Apply preprocessing to the image.
+    Reverting the colors (black to white and vice versa).
+
+    :param img: the image array
+    """
+    # color ranges from [0, 255]
+    # simplifying to 1 will result in a faster calculation
+    max_channel_no = 255
+    if (simplify):
+        max_channel_no = 1
 
     # apply preprocessing
     img[img < 128] = 0
-    img[127 < img] = 255
-    img = 255 - img
+    img[127 < img] = max_channel_no
+    img = max_channel_no - img
 
     return img
 
 
 def write_to_file(output_file: pathlib.Path, arr: np.ndarray) -> None:
-    """    
-    # ssd_map = np.zeros((number_of_width, number_of_col))
-    # file = open("output/ssd_map", "r")
-    # data = file.readlines()
-    # file.close()
-
-    # for row in range(0, ssd_map.shape[0]):
-    #     line = data[row].strip("\n").split(" ")
-    #     for col in range(0, ssd_map.shape[1]):
-    #         ssd_map[row, col] = np.float64(float(line[col]))
+    """
     Write the array (numpy 2d-array) to the output file in the repository directory
 
     :param output_file: the output file to write to
@@ -57,7 +61,7 @@ def write_to_file(output_file: pathlib.Path, arr: np.ndarray) -> None:
             fp.write("\n")
 
 
-def get_ssd_map(ssd_map_file: pathlib.Path, no_of_width: int, no_of_col: int) -> np.ndarray:
+def get_ssd_map_from_file(ssd_map_file: pathlib.Path, no_of_width: int, no_of_col: int) -> np.ndarray:
     """
     Read the ssd_map from the output file.
     Parse the ssd_map from the output file to an np array.
@@ -66,6 +70,9 @@ def get_ssd_map(ssd_map_file: pathlib.Path, no_of_width: int, no_of_col: int) ->
     :param no_of_width: the number of width of the ssd_map array
     :param no_of_col: the number of column of the ssd_map array
     """
+    if (not ssd_map_file.exists()):
+        raise FileExistsError(f"'{ssd_map_file}' does not exist")
+
     # initialise the ssd_map np array
     ssd_map = np.zeros((no_of_width, no_of_col))
 
@@ -83,30 +90,98 @@ def get_ssd_map(ssd_map_file: pathlib.Path, no_of_width: int, no_of_col: int) ->
     return ssd_map
 
 
-def main():
+def generate_ssd_map(
+    input_img: np.ndarray,
+    template: np.ndarray,
+) -> np.ndarray:
+    """
+    Generate an SSD map.
+
+    :param input_img: the input image in np array
+    :param template: the template in np array
+    """
+    # get the shape
+    input_img_rows = input_img.shape[0]
+    input_img_cols = input_img.shape[1]
+
+    template_rows = template.shape[0]
+    template_cols = template.shape[1]
+
+    # condition 1: input_img's row cannot be smaller than template's row
+    if (input_img_rows < template_rows):
+        raise ValueError("Input Image's number of rows is smaller than template's")
+    
+    # condition 2: input_img's column cannot be smaller than template's col
+    if (input_img_cols < template_cols):
+        raise ValueError("Input Image's number of rows is smaller than template's")
+
+    # get the ssd_map shape
+    ssd_map_no_of_rows = input_img_rows - template_rows + 1
+    ssd_map_no_of_cols = input_img_cols - template_cols + 1
+
+    # generate the ssd_map
+    ssd_map = np.zeros((ssd_map_no_of_rows, ssd_map_no_of_cols))
+    for row in range(ssd_map_no_of_rows):
+        for col in range(ssd_map_no_of_cols):
+
+            row_start = row
+            row_end = row_start + template_rows
+
+            col_start = col
+            col_end = col_start + template_cols
+
+            # create the window in the input image
+            input_img_intermediate = input_img[row_start:row_end, col_start:col_end]
+
+            # step 1: diff
+            diff = template - input_img_intermediate
+
+            # step 2: square
+            square = diff ** 2
+            
+            # step 3: sum
+            total = np.sum(square)
+
+            # step 4: assign valueget_ssd_map to ssd_map
+            ssd_map[row, col] = total
+
+    return ssd_map
+
+
+@click.command()
+@click.option('--cuda', '-c', is_flag=True, help='Using CUDA code to generate SSD map')
+def main(cuda: bool):
 
     # create 'output' folder
     output_dir_path = pathlib.Path(__file__).parent / 'output'
     if not output_dir_path.is_dir():
         output_dir_path.mkdir(exist_ok=True)
 
+    # to speed up the generation of SSD map
+    simplify = True
 
-    # load template and apply necessary preprocessing
-    template = load_img('./W10LabData/template.png')
 
     # (row, col) OR (height, width) OR (108, 81)
+    # load template and apply necessary preprocessing
+    template = imread('./input/template.png', pilmode='L')
+
+    # apply preprocessing on the template
+    template = preprocessing(template, simplify=simplify)
     logging.info(f"Template's Shape:     {template.shape}")
     logging.info(f"Template's Unique:    {np.unique(template)}")
 
 
+    # (row, col) OR (height, width) OR (1053, 745)
     # load input image and apply necessary preprocessing
-    input_img = load_img('./W10LabData/input.png')
+    input_img = imread('./input/input.png', pilmode='L')
 
+    # apply preprocessing on the input_img
+    input_img = preprocessing(input_img, simplify=simplify)
     logging.info(f"Input Image's Shape:  {input_img.shape}")
     logging.info(f"Input Image's Unique: {np.unique(input_img)}")
 
 
-    # save template to output file    
+    # save template to output file - for uni submission 
     template_output_file = output_dir_path / 'template'
     write_to_file(
         output_file=template_output_file,
@@ -115,7 +190,7 @@ def main():
     logging.info(f"'template' saved to '{template_output_file}'")
 
 
-    # save input image to output file
+    # save input image to output file - for uni submission
     input_img_output_file = output_dir_path / 'input_image'
     write_to_file(
         output_file=input_img_output_file,
@@ -130,33 +205,53 @@ def main():
     logging.info(f"Dimension of SSD Map: {number_of_width, number_of_col}")
 
 
-    logging.info("Using GPU to process the SSD to create the SSD Map")
+    # ---------------------------------------------
+    #  Using GPU (CUDA) code
+    # ---------------------------------------------
+    if (cuda):
+        logging.info("Using GPU to process the SSD to create the SSD Map")
 
-    # first command
-    cmd = ['nvcc', 'ssd.cu', '-o', 'ssd']
-    subprocess.run(cmd)
+        # first command: compilation - to generate a binary file
+        cmd = ['nvcc', 'ssd.cu', '-o', 'ssd']
+        subprocess.run(cmd)
 
-    # second command
-    cmd = ['./ssd']
-    subprocess.run(cmd)
+        # second command: run the compiled file
+        cmd = ['./ssd']
+        subprocess.run(cmd)
+
+        # get the ssd_map
+        ssd_map_file = output_dir_path / 'ssd_map'
+        ssd_map = get_ssd_map_from_file(
+            ssd_map_file=ssd_map_file,
+            no_of_width=number_of_width,
+            no_of_col=number_of_col,
+        )
+
+    # ---------------------------------------------
+    #  Using CPU
+    # ---------------------------------------------
+    else:
+        logging.info("Using CPU to process the SSD to create the SSD Map")
+        start = time.perf_counter()
+        ssd_map = generate_ssd_map(
+            input_img=input_img,
+            template=template
+        )
+        end = time.perf_counter()
+        logging.info(f"Time taken to generate SSD Map: {end - start:.6f} seconds")
 
     logging.info("SSD Map generated")
 
-
-    # get the ssd_map
-    ssd_map_file = output_dir_path / 'ssd_map'
-    ssd_map = get_ssd_map(
-        ssd_map_file=ssd_map_file,
-        no_of_width=number_of_width,
-        no_of_col=number_of_col,
-    )
-    logging.info("SSD Map loaded successfully") 
+    # revert back if simplify set to True
+    if (simplify):
+        input_img = postprocessing(input_img)
+        template = postprocessing(template)
 
 
     temp_row = template.shape[0]
     temp_col = template.shape[1]
 
-    target_num = 5
+    target_num = 5 # hardcoded
     target_res = []
 
     logging.info(f"Getting {target_num} coordinates")
@@ -200,7 +295,7 @@ def main():
     combined_img = np.concatenate((combined_img, final_img), 1)
     plt.imshow(combined_img, cmap='gray')
     plt.title("Name: Reynardo Tjhin   SID: 500631832")
-    plt.show()
+    plt.savefig("./output/output.png")
 
 if (__name__ == "__main__"):
     main()

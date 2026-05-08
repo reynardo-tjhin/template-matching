@@ -228,8 +228,10 @@ ssd*
 template
 
 
-# ignore output folder
+# ignore output folder/output file(s)
 output/
+output.png
+
 
 # testing file
 test.py

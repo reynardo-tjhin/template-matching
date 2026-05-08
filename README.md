@@ -17,13 +17,11 @@ Final image generated using 2 files (`COMP3419-W10-Lab-Template-Matching.py` and
 6. Output the image with the help of matplotlib
 
 `ssd.cu`: A file to generate SSD Map with the help of external files.
-- Used RTX 3050 Ti GPU
+
+- **Operating System**: Ubuntu, Version: "20.04.5 LTS (Focal Fossa)"
+- **GPU**: NVIDIA Corporation GA107BM [GeForce RTX 3050 Ti Mobile]
+- NVIDIA-SMI, Driver Version: 560.28.03
+- CUDA Version: 12.6
 - nvcc, version: 10.1.243
-- number of threads required: 665 per block
-- number of blocks required:  946 per grid
-
-NVIDIA-SMI 560.28.03              Driver Version: 560.28.03      CUDA Version: 12.6
-NVIDIA Corporation GA107BM [GeForce RTX 3050 Ti Mobile]
-
-Operating System:
-- Ubuntu, Version: "20.04.5 LTS (Focal Fossa)"
+- Number of threads required: 665 per block
+- Number of blocks required:  946 per grid
