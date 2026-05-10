@@ -23,5 +23,6 @@ Final image generated using 2 files (`main.py` and `ssd.cu`)
 - NVIDIA-SMI, Driver Version: 560.28.03
 - CUDA Version: 12.6
 - nvcc, version: 10.1.243
+- Compute capability: 8.6
 - Number of threads required: 665 per block
 - Number of blocks required:  946 per grid
